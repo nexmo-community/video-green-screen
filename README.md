@@ -1,8 +1,8 @@
 ![Vonage](.github/vonage.png)
 
-# Project Title
+# Vonage Video API Green Screen
 
-Project Description
+Replace green pixels with a custom image, and use as a Video API Publisher. 
 
 ## Code of Conduct
 

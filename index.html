@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    #v1, #c1, #c2 { display: none }
+  </style>
+</head>
+<body>
+  <video id="v1" width="320" height="240" autoplay></video>
+  <canvas id="c1" width="320" height="240"></canvas>
+  <canvas id="c2" width="320" height="240"></canvas>
+  <div id="opentok-publishers"></div>
+  <div id="opentok-subscribers"></div>
+  <script src="https://static.opentok.com/v2/js/opentok.min.js"></script>
+  <script>
+    const sessionId = 'YOUR_SESSION_ID'
+    const apiKey = 'YOUR_PROJECT_API_KEY'
+    const token = 'YOUR_TOKEN'
+
+    // Create references to the video and canvas elements
+    const v1 = document.getElementById('v1')
+    const c1 = document.getElementById('c1')
+    const c2 = document.getElementById('c2')
+
+    // Get canvas context
+    const c1Ctx = c1.getContext('2d')
+    const c2Ctx = c2.getContext('2d')
+
+    const backgroundImage = new Image()
+    backgroundImage.src = 'vonage-gradient.png'
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { v1.srcObject = stream })
+
+    v1.addEventListener('play', () => {
+      setInterval(process, 0)
+    })
+
+    function process() {
+      c1Ctx.drawImage(v1, 0, 0, 320, 240)
+      c2Ctx.drawImage(backgroundImage, 0, 0, 320, 240)
+      const frame = c1Ctx.getImageData(0, 0, 320, 240)
+      const pixels = frame.data
+      for(let i=0; i<pixels.length; i+=4) {
+        const [r, g, b] = [pixels[i], pixels[i+1], pixels[i+2]]
+        const [h, s, l] = RGBToHSL(r, g, b)
+
+        if(h > 110 && h < 200) {
+          pixels[i+3] = 0
+        } else {
+          c2Ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 1)`
+          const x = (i/4) % 320
+          const y = Math.floor((i / 4) / 320)
+          c2Ctx.fillRect(x, y, 1, 1)
+        }
+      }
+      frame.data = pixels
+      c1Ctx.putImageData(frame, 0, 0)
+    }
+
+    const session = OT.initSession(apiKey, sessionId)
+    const publisher = OT.initPublisher("opentok-publishers", {
+      videoSource: c2.captureStream().getVideoTracks()[0],
+      width: 320,
+      height: 240
+    })
+    session.connect(token, () => {
+      session.publish(publisher)
+    })
+    session.on('streamCreated', event => {
+      session.subscribe(event.stream, "opentok-subscribers")
+    })
+
+    function RGBToHSL(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      let cmin = Math.min(r,g,b), 
+          cmax = Math.max(r,g,b), 
+          delta = cmax - cmin, 
+          h = 0, s = 0, l = 0;
+      if (delta == 0) h = 0;
+        else if (cmax == r) h = ((g - b) / delta) % 6;
+        else if (cmax == g) h = (b - r) / delta + 2;
+        else h = (r - g) / delta + 4;
+      h = Math.round(h * 60);
+      if (h < 0) h += 360;
+      l = (cmax + cmin) / 2;
+      s = delta == 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+      s = +(s * 100).toFixed(1);
+      l = +(l * 100).toFixed(1);
+      return [h, s, l]
+    }
+  </script>
+</body>
+</html>
